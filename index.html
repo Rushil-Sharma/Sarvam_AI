@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>कसौटी — हिंदी वाक् मॉडल रिग्रेशन गेट</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ───────────────── Design tokens ───────────────── */
+:root {
+  --bg:       #f7f5f0;
+  --surface:  #ffffff;
+  --surface2: #f0ece4;
+  --ink:      #1a1713;
+  --ink2:     #5a5549;
+  --ink3:     #9b9388;
+  --line:     #e2ddd5;
+  --accent:   #c1440e;
+  --accent2:  #e8692a;
+  --ok:       #1a7a4a;
+  --okbg:     #e4f4ec;
+  --bad:      #c22118;
+  --badbg:    #fce9e8;
+  --warn:     #a06000;
+  --warnbg:   #fff4dc;
+  --blue:     #2563eb;
+  --bluebg:   #eff6ff;
+  --purple:   #7c3aed;
+  --purplebg: #f5f3ff;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  --r:        12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #131210;
+    --surface:  #1c1a17;
+    --surface2: #242119;
+    --ink:      #f0ece3;
+    --ink2:     #a8a097;
+    --ink3:     #6a6257;
+    --line:     #2e2b25;
+    --accent:   #e8692a;
+    --accent2:  #f08040;
+    --ok:       #4ecca3;
+    --okbg:     #0f2d1e;
+    --bad:      #ff6b6b;
+    --badbg:    #2e1010;
+    --warn:     #f4b942;
+    --warnbg:   #2a1f00;
+    --blue:     #60a5fa;
+    --bluebg:   #0f1f3d;
+    --purple:   #a78bfa;
+    --purplebg: #1e1040;
+    --shadow:   0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+  }
+}
+
+/* ───────────────── Reset & base ───────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 'Inter', 'Noto Sans Devanagari', system-ui, sans-serif;
+  min-height: 100vh;
+}
+.devanagari { font-family: 'Noto Sans Devanagari', 'Inter', sans-serif; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ───────────────── Layout ───────────────── */
+.page { max-width: 1320px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ───────────────── Header ───────────────── */
+.header {
+  padding: 32px 0 24px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 28px;
+}
+.header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand-icon {
+  width: 56px; height: 56px;
+  background: var(--ink);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+}
+.brand-text h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.brand-text h1 em { color: var(--accent); font-style: normal; }
+.brand-text .tagline {
+  font-size: 13px;
+  color: var(--ink2);
+  margin-top: 4px;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+}
+.header-meta { font-size: 13px; color: var(--ink2); max-width: 540px; line-height: 1.55; }
+.pipeline-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: 12px;
+  background: var(--surface);
+  margin: 3px 2px;
+}
+.pipeline-chip b { color: var(--accent); }
+
+/* ───────────────── Controls ───────────────── */
+.controls-bar {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 6px;
+}
+select, input[type=number], input[type=text] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color .15s;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+/* ───────────────── Buttons ───────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font: 600 14px 'Inter', sans-serif;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: wait; }
+.btn-primary { background: var(--ink); color: var(--bg); }
+.btn-accent  { background: var(--accent); color: #fff; }
+.btn-ghost   { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* ───────────────── Progress ───────────────── */
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin: 14px 0 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px;
+  transition: width .3s ease;
+  width: 0%;
+}
+.status-line {
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ink2);
+}
+
+/* ───────────────── Gate (verdict + category table) ───────────────── */
+.gate-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 800px) { .gate-grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+/* Verdict card */
+.verdict-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 160px;
+  transition: background .3s, border-color .3s;
+}
+.verdict-icon { font-size: 48px; line-height: 1; margin-bottom: 6px; }
+.verdict-word {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.verdict-sub { font-size: 12.5px; color: var(--ink2); margin-top: 6px; }
+.verdict-card.pass { background: var(--okbg); border-color: var(--ok); }
+.verdict-card.pass .verdict-word { color: var(--ok); }
+.verdict-card.fail { background: var(--badbg); border-color: var(--bad); }
+.verdict-card.fail .verdict-word { color: var(--bad); }
+
+/* Category table */
+.cat-table { width: 100%; border-collapse: collapse; }
+.cat-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink3);
+  border-bottom: 1.5px solid var(--line);
+}
+.cat-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cat-table tr:last-child td { border-bottom: none; }
+.cat-table tr.regressed td { background: var(--badbg); }
+.num { font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap; }
+.delta-bad  { color: var(--bad);  font-weight: 700; }
+.delta-ok   { color: var(--ok);   font-weight: 600; }
+.verdict-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.verdict-badge.ok   { background: var(--okbg);   color: var(--ok);  }
+.verdict-badge.fail { background: var(--badbg);  color: var(--bad); }
+
+/* ───────────────── Score rings ───────────────── */
+.score-ring {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.score-ring.pass { background: var(--okbg);   color: var(--ok);  border: 2px solid var(--ok); }
+.score-ring.fail { background: var(--badbg);  color: var(--bad); border: 2px solid var(--bad); }
+.score-ring.na   { background: var(--surface2); color: var(--ink3); border: 2px solid var(--line); }
+
+/* ───────────────── Cases table ───────────────── */
+.cases-section { margin-bottom: 24px; }
+.section-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.section-title .badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  background: var(--surface2); border-radius: 99px; color: var(--ink2);
+}
+
+.cases-table { width: 100%; border-collapse: collapse; }
+.cases-table th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink3); border-bottom: 1.5px solid var(--line); white-space: nowrap;
+}
+.cases-table td { padding: 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cases-table tr:last-child td { border-bottom: none; }
+.cases-table tr.row-worse { background: var(--badbg); }
+.cases-table tr.row-better { background: var(--okbg); }
+
+.case-id {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--surface2);
+  font-size: 12px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.lang-pill {
+  display: inline-block; padding: 1px 7px;
+  background: var(--ink); color: var(--bg);
+  border-radius: 99px; font-size: 10px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace; letter-spacing: .04em;
+}
+.cat-pill {
+  display: inline-block; padding: 1px 7px;
+  background: var(--purplebg); color: var(--purple);
+  border-radius: 99px; font-size: 10px; font-weight: 600;
+  margin-top: 3px;
+}
+.ref-text {
+  font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  font-size: 15px; font-weight: 600; line-height: 1.5;
+}
+.transcript {
+  font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  font-size: 13.5px; color: var(--ink2); margin-top: 5px; line-height: 1.55;
+}
+.transcript .model-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  background: var(--surface2); color: var(--ink3);
+  padding: 0 5px; border-radius: 4px; margin-right: 5px;
+}
+.transcript .latency {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink3); margin-left: 4px;
+}
+
+/* Word diff highlights */
+.w-ok  { }
+.w-sub { background: var(--warnbg); color: var(--warn); border-radius: 3px; padding: 0 2px; }
+.w-del { background: var(--badbg);  color: var(--bad);  border-radius: 3px; padding: 0 2px; text-decoration: line-through; }
+.w-ins { background: var(--bluebg); color: var(--blue); border-radius: 3px; padding: 0 2px; }
+
+.issue-text { font-size: 11.5px; color: var(--ink3); font-style: italic; margin-top: 3px; }
+
+audio { display: block; width: 100%; max-width: 200px; margin-top: 4px; }
+
+/* ───────────────── Custom tester ───────────────── */
+.custom-card { margin-bottom: 24px; }
+.custom-grid {
+  display: grid;
+  grid-template-columns: 1fr 140px auto;
+  gap: 10px; align-items: end;
+  margin-bottom: 12px;
+}
+@media (max-width: 640px) { .custom-grid { grid-template-columns: 1fr; } }
+
+/* ───────────────── Stats strip ───────────────── */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.stat-card .stat-val {
+  font-size: 26px; font-weight: 800; letter-spacing: -.03em;
+  font-family: 'JetBrains Mono', monospace; line-height: 1;
+}
+.stat-card .stat-label { font-size: 12px; color: var(--ink2); margin-top: 4px; }
+.stat-ok  { border-left: 3px solid var(--ok); }
+.stat-bad { border-left: 3px solid var(--bad); }
+.stat-blue { border-left: 3px solid var(--blue); }
+.stat-warn { border-left: 3px solid var(--warn); }
+
+/* ───────────────── CI snippet ───────────────── */
+.ci-section { margin-bottom: 24px; }
+pre {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 18px 20px;
+  border-radius: var(--r);
+  overflow-x: auto;
+  font: 13px/1.7 'JetBrains Mono', monospace;
+}
+pre .c { color: #a89; }
+pre .k { color: var(--accent2); }
+pre .s { color: #9d9; }
+
+/* ───────────────── Footer ───────────────── */
+.footer {
+  font-size: 13px; color: var(--ink3);
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 40px;
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between;
+}
+
+/* ───────────────── Spinner ───────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+}
+
+/* ───────────────── Category filter tabs ───────────────── */
+.cat-tabs {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 12px;
+}
+.cat-tab {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink2);
+  transition: all .15s;
+  font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+}
+.cat-tab.active, .cat-tab:hover {
+  background: var(--ink); color: var(--bg); border-color: var(--ink);
+}
+
+/* ───────────────── Diff legend ───────────────── */
+.diff-legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 11px; color: var(--ink2);
+  margin-bottom: 8px;
+}
+.diff-legend span { display: flex; align-items: center; gap: 4px; }
+.diff-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+
+/* ───────────────── Tooltip ───────────────── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 130%; left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink); color: var(--bg);
+  padding: 4px 8px; border-radius: 6px;
+  font-size: 11px; white-space: nowrap;
+  pointer-events: none; opacity: 0;
+  transition: opacity .15s;
+  z-index: 10;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ───────────────── Responsive ───────────────── */
+@media (max-width: 600px) {
+  .header-inner { flex-direction: column; }
+  .brand-text h1 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">⚖️</div>
+      <div class="brand-text">
+        <h1>Kasauti <em>कसौटी</em></h1>
+        <div class="tagline">हिंदी वाक् मॉडल रिग्रेशन गेट — 30 कठिन वास्तविक परीक्षण</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <p>हर नई मॉडल रिलीज़ को 30 हिंदी टेस्ट केसों से गुज़ारें — Hinglish, OTP, बैंकिंग, दवाइयाँ, पते, सरकारी ID, मुहावरे और औपचारिक हिंदी। पुराने और नए मॉडल को एक जैसा ऑडियो सुनाएं, delta है तो release रोकें।</p>
+      <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:4px;">
+        <span class="pipeline-chip"><b>1</b> Bulbul TTS</span>
+        <span class="pipeline-chip"><b>2</b> शोर मिलाएं</span>
+        <span class="pipeline-chip"><b>3</b> Saaras STT (दोनों)</span>
+        <span class="pipeline-chip"><b>4</b> WER + LLM जज</span>
+        <span class="pipeline-chip"><b>5</b> PASS / FAIL</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════ CONTROLS ═══════════════ -->
+<div class="controls-bar">
+  <div class="controls-grid">
+    <div class="field">
+      <label>Baseline STT</label>
+      <select id="base">
+        <option>saaras:v3</option>
+        <option>saaras:v4</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Candidate STT</label>
+      <select id="cand">
+        <option>saaras:v4</option>
+        <option>saaras:v3</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>TTS मॉडल</label>
+      <select id="tts">
+        <option>bulbul:v3</option>
+        <option>bulbul:v4-flash</option>
+        <option>bulbul:v2</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>शोर (SNR)</label>
+      <select id="snr">
+        <option value="clean">साफ़ (clean)</option>
+        <option value="15">15 dB — दफ़्तर</option>
+        <option value="10" selected>10 dB — सड़क</option>
+        <option value="5">5 dB — भीड़भाड़ बस</option>
+      </select>
+    </div>
+    <div class="field">
+      <label data-tip="Max allowed WER increase per category">WER थ्रेशोल्ड</label>
+      <input id="thr" type="number" step="0.01" value="0.05" min="0" max="1">
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="btn btn-accent" id="go" style="width:100%">▶ पूरा टेस्ट चलाएं</button>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+  <div class="status-line" id="status">30 टेस्ट · 8 हिंदी केटेगरी · Hinglish, OTP, बैंकिंग, दवाइयाँ, पते, ID, मुहावरे, औपचारिक</div>
+</div>
+
+<!-- ═══════════════ STATS STRIP ═══════════════ -->
+<div class="stats-strip" id="stats-strip" style="display:none">
+  <div class="stat-card stat-bad"><div class="stat-val" id="s-regressed">0</div><div class="stat-label">रिग्रेशन</div></div>
+  <div class="stat-card stat-ok"><div class="stat-val" id="s-pass-rate">—</div><div class="stat-label">Judge pass rate (candidate)</div></div>
+  <div class="stat-card stat-blue"><div class="stat-val" id="s-avg-wer">—</div><div class="stat-label">Avg WER (candidate)</div></div>
+  <div class="stat-card stat-warn"><div class="stat-val" id="s-avg-lat">—</div><div class="stat-label">Avg latency (s)</div></div>
+</div>
+
+<!-- ═══════════════ GATE ═══════════════ -->
+<div class="gate-grid">
+  <div class="card verdict-card" id="verdict">
+    <div class="verdict-icon">⏳</div>
+    <div class="verdict-word" style="font-size:22px; color:var(--ink2)">प्रतीक्षा</div>
+    <div class="verdict-sub">टेस्ट suite चलाएं</div>
+  </div>
+  <div class="card" style="overflow-x:auto; padding:0">
+    <table class="cat-table" id="cat-table">
+      <thead>
+        <tr>
+          <th>केटेगरी</th>
+          <th>n</th>
+          <th data-tip="Avg word error rate — baseline">WER आधार</th>
+          <th data-tip="Avg word error rate — candidate">WER उम्मीदवार</th>
+          <th>Δ WER</th>
+          <th>Judge आधार</th>
+          <th>Judge उम्मीदवार</th>
+          <th>नतीजा</th>
+        </tr>
+      </thead>
+      <tbody id="cats"><tr><td colspan="8" style="padding:20px; color:var(--ink3); font-size:13px; text-align:center">अभी कोई परिणाम नहीं।</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ CASES TABLE ═══════════════ -->
+<div class="cases-section">
+  <div class="section-title">
+    केस-दर-केस परिणाम
+    <span class="badge" id="case-count">0 / 30</span>
+    <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="toggleDiff()">≋ शब्द हाइलाइट</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleAudio()">♫ ऑडियो</button>
+    </div>
+  </div>
+  <div class="diff-legend" id="diff-legend" style="display:none">
+    <span><span class="swatch" style="background:var(--warnbg); border:1px solid var(--warn)"></span> बदला (sub)</span>
+    <span><span class="swatch" style="background:var(--badbg); border:1px solid var(--bad)"></span> छूटा (del)</span>
+    <span><span class="swatch" style="background:var(--bluebg); border:1px solid var(--blue)"></span> अतिरिक्त (ins)</span>
+  </div>
+  <!-- Category filter tabs -->
+  <div class="cat-tabs" id="cat-tabs">
+    <div class="cat-tab active" data-cat="all" onclick="filterCat(this,'all')">सभी</div>
+  </div>
+  <div class="card" style="padding:0; overflow-x:auto">
+    <table class="cases-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>भाषा · वर्ग</th>
+          <th>मूल पाठ / ट्रांसक्रिप्ट</th>
+          <th>WER आधार → उम्मीदवार</th>
+          <th>Judge →</th>
+          <th id="audio-col-header">ऑडियो</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ CUSTOM TESTER ═══════════════ -->
+<div class="custom-card">
+  <div class="section-title">अपना वाक्य आज़माएं</div>
+  <div class="card">
+    <div class="custom-grid">
+      <div class="field" style="margin:0">
+        <label>हिंदी वाक्य</label>
+        <input id="ctext" type="text" value="मुझे 3 बजे हैदराबाद से दिल्ली की फ्लाइट बुक करनी है।" placeholder="देवनागरी में लिखें…">
+      </div>
+      <div class="field" style="margin:0">
+        <label>भाषा</label>
+        <select id="clang">
+          <option value="hi-IN" selected>hi-IN हिंदी</option>
+          <option value="en-IN">en-IN English</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0">
+        <label>&nbsp;</label>
+        <button class="btn btn-ghost" id="cgo">Test it</button>
+      </div>
+    </div>
+    <p style="font-size:12.5px; color:var(--ink3); margin-bottom:12px">
+      💡 देवनागरी में लिखें। Saaras देवनागरी में ट्रांसक्राइब करता है — Roman-script Hinglish से WER सही नहीं आता, पर LLM जज अर्थ देखता है।
+    </p>
+    <div style="overflow-x:auto">
+      <table class="cases-table"><tbody id="crow"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CI SECTION ═══════════════ -->
+<div class="ci-section">
+  <div class="section-title">CI में लगाएं</div>
+  <div class="card" style="padding:0">
+<pre><span class="c"># .github/workflows/kasauti.yml — हर PR पर चलेगा</span>
+<span class="k">python</span> harness.py --local --base saaras:v3 --cand saaras:v4 --snr 10 --threshold 0.05
+
+<span class="c"># या deployed URL के ख़िलाफ़:</span>
+<span class="k">python</span> harness.py --url https://&lt;your-vercel-url&gt; --snr 10
+
+<span class="c"># exit 0 = PASS · exit 1 = FAIL (release blocked)
+# kasauti_report.json में पूरा JSON लिखता है</span></pre>
+    <div style="padding:16px; font-size:13px; color:var(--ink2); border-top:1px solid var(--line)">
+      <strong>क्यों एक ही ऑडियो?</strong> — दोनों मॉडल byte-identical noisy audio सुनते हैं (fixed seed), इसलिए delta सिर्फ़ मॉडल का है, input का नहीं।<br>
+      <strong>क्यों LLM जज?</strong> — WER कहता है "₹2,450" ≠ "दो हज़ार चार सौ पचास"; जज अर्थ देखता है और गलत OTP, नाम, राशि पकड़ता है।
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<footer class="footer" style="max-width:1320px; margin:0 auto; padding:24px 20px">
+  <span>बना Sarvam Campus '26, IIT Hyderabad पर · Bulbul · Saaras · Sarvam LLM</span>
+  <span>कसौटी = परखने की कसौटी 🔬</span>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════ State
+const $ = id => document.getElementById(id);
+let SUITE = [], CAT_LABELS = {}, RESULTS = [];
+let showDiff = true, showAudio = true, filterCatActive = 'all';
+
+// ═══════════════════════════════════════════════════════ Helpers
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f3 = x => x == null ? "—" : x.toFixed(3);
+const f1 = x => x == null ? "—" : x.toFixed(1);
+
+function scoreRing(j) {
+  if (!j || j.score == null) return '<span class="score-ring na">?</span>';
+  const cls = j.pass ? 'pass' : 'fail';
+  return `<span class="score-ring ${cls}">${j.score}</span>`;
+}
+
+function diffHTML(diff) {
+  if (!diff || !showDiff) return '';
+  return diff.map(([tag, word]) => {
+    const w = esc(word);
+    if (tag === 'ok')  return `<span class="w-ok">${w}</span>`;
+    if (tag === 'sub') return `<span class="w-sub">${w}</span>`;
+    if (tag === 'del') return `<span class="w-del">${w}</span>`;
+    if (tag === 'ins') return `<span class="w-ins">${w}</span>`;
+    return w;
+  }).join(' ');
+}
+
+// ═══════════════════════════════════════════════════════ Category tabs
+function buildCatTabs() {
+  const cats = [...new Set(SUITE.map(c => c.cat))];
+  const tabs = $('cat-tabs');
+  cats.forEach(cat => {
+    const label = CAT_LABELS[cat] || cat;
+    const d = document.createElement('div');
+    d.className = 'cat-tab';
+    d.dataset.cat = cat;
+    d.textContent = label;
+    d.onclick = () => filterCat(d, cat);
+    tabs.appendChild(d);
+  });
+}
+
+function filterCat(el, cat) {
+  filterCatActive = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderRows();
+}
+
+// ═══════════════════════════════════════════════════════ Row rendering
+function rowHTML(c, r) {
+  const id = c.id || '★';
+  const catLabel = CAT_LABELS[c.cat] || c.cat;
+  const langBadge = `<span class="lang-pill">${esc(c.lang)}</span>`;
+  const catBadge  = `<span class="cat-pill">${esc(catLabel)}</span>`;
+  const ref       = `<div class="ref-text devanagari">${esc(c.text)}</div>`;
+  const caseId    = `<span class="case-id">${id}</span>`;
+
+  if (!r) return `<tr>
+    <td>${caseId}</td>
+    <td>${langBadge}<br>${catBadge}</td>
+    <td>${ref}</td>
+    <td class="num" style="color:var(--ink3)">…</td>
+    <td></td>
+    <td></td>
+  </tr>`;
+
+  if (r.error) return `<tr>
+    <td>${caseId}</td>
+    <td>${langBadge}<br>${catBadge}</td>
+    <td>${ref}<div style="color:var(--bad); font-size:12px; margin-top:4px">${esc(r.error)}</div></td>
+    <td></td><td></td><td></td>
+  </tr>`;
+
+  const b = r.baseline, k = r.candidate;
+  const hasErr = b.error || k.error;
+
+  // Row highlight
+  const worse  = !hasErr && ((k.wer ?? 0) > (b.wer ?? 0) + 0.001 || (b.judge?.pass && k.judge?.pass === false));
+  const better = !hasErr && !worse && ((k.wer ?? 0) < (b.wer ?? 0) - 0.001);
+  const rowCls = worse ? 'row-worse' : better ? 'row-better' : '';
+
+  // Transcript cells
+  function legCell(x, lbl) {
+    if (x.error) return `<div class="transcript"><span class="model-label">${lbl}</span><span style="color:var(--bad)">${esc(x.error)}</span></div>`;
+    const d = diffHTML(x.diff);
+    const issueText = (x.judge?.issue || '').trim();
+    const noIssue = !issueText || /^(none|no issues?\.?|n\/a|-)$/i.test(issueText);
+    return `<div class="transcript">
+      <span class="model-label">${lbl} ${esc(x.model)}</span>
+      <span class="devanagari">${d || esc(x.transcript)}</span>
+      <span class="latency">${x.latency_s}s</span>
+      ${!noIssue ? `<div class="issue-text">⚠ ${esc(issueText)}</div>` : ''}
+    </div>`;
+  }
+
+  // WER cell
+  const wd = (k.wer ?? 0) - (b.wer ?? 0);
+  const werCls = wd > 0.001 ? 'delta-bad' : wd < -0.001 ? 'delta-ok' : '';
+  const werCell = hasErr ? '—' : `<span class="num">${f3(b.wer)}</span> → <span class="num ${werCls}">${f3(k.wer)}</span>`;
+  const deltaSign = wd > 0 ? '+' : '';
+  const deltaCell = hasErr ? '' : `<br><span class="num ${werCls}" style="font-size:11px">${deltaSign}${f3(wd)}</span>`;
+
+  // Audio
+  const audioCell = showAudio && r.audio_b64
+    ? `<audio controls preload="none" src="data:audio/wav;base64,${r.audio_b64}"></audio>`
+    : '';
+
+  return `<tr class="${rowCls}">
+    <td>${caseId}</td>
+    <td>${langBadge}<br>${catBadge}</td>
+    <td>${ref}${legCell(b, 'A')}${legCell(k, 'B')}</td>
+    <td>${werCell}${deltaCell}</td>
+    <td>${scoreRing(b.judge)} → ${scoreRing(k.judge)}</td>
+    <td>${audioCell}</td>
+  </tr>`;
+}
+
+function renderRows() {
+  const suite = filterCatActive === 'all' ? SUITE : SUITE.filter(c => c.cat === filterCatActive);
+  $('rows').innerHTML = suite.map(c =>
+    rowHTML(c, RESULTS.find(r => r && r.case && r.case.id === c.id))
+  ).join('');
+  $('case-count').textContent = `${RESULTS.length} / ${SUITE.length}`;
+}
+
+// ═══════════════════════════════════════════════════════ Gate
+function renderGate() {
+  const thr = parseFloat($('thr').value) || 0.05;
+  const cats = {};
+  for (const r of RESULTS) {
+    if (!r || r.error || r.baseline?.error || r.candidate?.error) continue;
+    const s = cats[r.case.cat] ??= {n:0, bw:0, cw:0, bp:0, cp:0, jn:0};
+    s.n++; s.bw += r.baseline.wer; s.cw += r.candidate.wer;
+    const bj = r.baseline.judge?.pass, cj = r.candidate.judge?.pass;
+    if (bj != null && cj != null) { s.jn++; s.bp += !!bj; s.cp += !!cj; }
+  }
+
+  let fail = false, html = '';
+  let totalW = 0, totalN = 0, totalPass = 0, totalJn = 0, totalLat = 0, latN = 0;
+
+  for (const [cat, s] of Object.entries(cats).sort()) {
+    const bw = s.bw / s.n, cw = s.cw / s.n, d = cw - bw;
+    const reg = d > thr || s.cp < s.bp;
+    fail ||= reg;
+    totalW += s.cw; totalN += s.n; totalPass += s.cp; totalJn += s.jn;
+    const label = CAT_LABELS[cat] || cat;
+    html += `<tr class="${reg ? 'regressed' : ''}">
+      <td><strong class="devanagari">${esc(label)}</strong></td>
+      <td class="num">${s.n}</td>
+      <td class="num">${bw.toFixed(3)}</td>
+      <td class="num">${cw.toFixed(3)}</td>
+      <td class="num ${d > 0 ? 'delta-bad' : 'delta-ok'}">${d > 0 ? '+' : ''}${d.toFixed(3)}</td>
+      <td class="num">${s.jn ? s.bp + '/' + s.jn : '—'}</td>
+      <td class="num">${s.jn ? s.cp + '/' + s.jn : '—'}</td>
+      <td><span class="verdict-badge ${reg ? 'fail' : 'ok'}">${reg ? 'REGRESSION' : 'ok'}</span></td>
+    </tr>`;
+  }
+
+  $('cats').innerHTML = html || '<tr><td colspan="8" style="padding:20px; color:var(--ink3); text-align:center">अभी कोई परिणाम नहीं।</td></tr>';
+
+  const v = $('verdict');
+  if (!html) return;
+
+  if (fail) {
+    v.className = 'card verdict-card fail';
+    v.innerHTML = '<div class="verdict-icon">❌</div><div class="verdict-word">FAIL</div><div class="verdict-sub">release blocked — candidate regressed</div>';
+  } else {
+    v.className = 'card verdict-card pass';
+    v.innerHTML = '<div class="verdict-icon">✅</div><div class="verdict-word">PASS</div><div class="verdict-sub">कोई केटेगरी regress नहीं हुई</div>';
+  }
+
+  // Update stats strip
+  const regCount = Object.values(cats).filter((s,_,arr) => {
+    const bw = s.bw/s.n, cw = s.cw/s.n;
+    return (cw-bw) > thr || s.cp < s.bp;
+  }).length;
+
+  $('s-regressed').textContent = regCount;
+  $('s-pass-rate').textContent = totalJn ? Math.round(totalPass/totalJn*100) + '%' : '—';
+  $('s-avg-wer').textContent = totalN ? (totalW/totalN).toFixed(3) : '—';
+
+  // Compute avg latency from results
+  const lats = RESULTS.flatMap(r => [r?.candidate?.latency_s]).filter(x => x != null);
+  $('s-avg-lat').textContent = lats.length ? (lats.reduce((a,b)=>a+b,0)/lats.length).toFixed(1)+'s' : '—';
+
+  $('stats-strip').style.display = 'grid';
+  $('diff-legend').style.display = showDiff ? 'flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════ Run
+async function runOne(c) {
+  const q = new URLSearchParams({
+    id: c.id, tts: $('tts').value, base: $('base').value,
+    cand: $('cand').value, snr: $('snr').value,
+    diff: showDiff ? '1' : '0'
+  });
+  try { const r = await fetch('/api/run?' + q); return await r.json(); }
+  catch(e) { return {case: c, error: String(e)}; }
+}
+
+$('go').onclick = async () => {
+  if (!SUITE.length) await loadSuite();
+  $('go').disabled = true;
+  RESULTS = [];
+  $('verdict').className = 'card verdict-card';
+  $('verdict').innerHTML = '<div class="verdict-icon"><span class="spinner"></span></div><div class="verdict-word" style="font-size:20px; color:var(--ink2)">चल रहा है…</div><div class="verdict-sub">0 / ' + SUITE.length + '</div>';
+  $('stats-strip').style.display = 'none';
+  renderRows(); renderGate();
+  let done = 0;
+  const t0 = Date.now(), queue = [...SUITE];
+  const prog = $('prog');
+  const worker = async () => {
+    while (queue.length) {
+      const c = queue.shift();
+      const r = await runOne(c);
+      if (!r.case) r.case = c;
+      RESULTS.push(r); done++;
+      const pct = done / SUITE.length * 100;
+      prog.style.width = pct + '%';
+      $('status').textContent = `${done}/${SUITE.length} cases · ${((Date.now()-t0)/1000).toFixed(1)}s · ${$('cand').value}`;
+      $('verdict').querySelector('.verdict-sub').textContent = `${done} / ${SUITE.length}`;
+      renderRows(); renderGate();
+    }
+  };
+  // 4 parallel workers
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  $('go').disabled = false;
+  $('status').textContent = `✓ ${SUITE.length} cases पूरे · ${((Date.now()-t0)/1000).toFixed(1)}s · ${$('cand').value} vs ${$('base').value}`;
+};
+
+// ═══════════════════════════════════════════════════════ Custom test
+$('cgo').onclick = async () => {
+  const c = {id: 0, lang: $('clang').value, cat: 'custom', text: $('ctext').value};
+  $('crow').innerHTML = rowHTML(c, null);
+  $('cgo').disabled = true;
+  const q = new URLSearchParams({
+    text: c.text, lang: c.lang, tts: $('tts').value,
+    base: $('base').value, cand: $('cand').value, snr: $('snr').value,
+    diff: '1'
+  });
+  try {
+    const r = await (await fetch('/api/run?' + q)).json();
+    $('crow').innerHTML = rowHTML(c, r);
+  } catch(e) {
+    $('crow').innerHTML = rowHTML(c, {error: String(e)});
+  }
+  $('cgo').disabled = false;
+};
+
+// ═══════════════════════════════════════════════════════ Toggles
+function toggleDiff() {
+  showDiff = !showDiff;
+  $('diff-legend').style.display = showDiff ? 'flex' : 'none';
+  renderRows();
+}
+function toggleAudio() {
+  showAudio = !showAudio;
+  renderRows();
+}
+
+$('thr').oninput = renderGate;
+
+// ═══════════════════════════════════════════════════════ Load suite
+async function loadSuite() {
+  try {
+    const r = await fetch('/api/run?suite=1');
+    const data = await r.json();
+    SUITE = data.suite;
+    CAT_LABELS = data.cat_labels || {};
+    buildCatTabs();
+    renderRows();
+  } catch(e) {
+    $('status').textContent = 'Suite लोड नहीं हुई: ' + e;
+  }
+}
+
+loadSuite();
+</script>
+</body>
+</html>
